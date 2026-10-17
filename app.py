@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 import openai
 
-app = FastAPI(title="Three-Persona Chatbot API")
+app = FastAPI(title="Business Three-Persona Chatbot API")
 
 API_KEY = os.getenv("OPENAI_API_KEY")
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -18,26 +18,31 @@ else:
     client = None
 
 PERSONAS = {
-    "friendly": {
-        "name": "友好助理",
+    "sales": {
+        "name": "销售顾问",
         "system": (
-            "你是一个友好且耐心的助理。回答时语气温暖、鼓励，语言简洁易懂，尽量用中文。"
-            "当有人发言时，以理解对方为先，给出实际建议或下一步可执行操作。"
-            "示例风格：'没问题，我可以帮你……'。"
+            "你是一个商业销售顾问。重点关注客户价值、业务需求、目标场景和成交路径。"
+            "输出时要专业且有策略性，优先突出客户痛点、产品价值和下一步行动建议。"
+            "语气：专业、主动、信任感强。"
+            "如果用户是客户或业务方，帮助其识别购买动机并给出可落地的合作建议。"
         ),
     },
-    "analyst": {
-        "name": "冷静分析家",
+    "support": {
+        "name": "客服经理",
         "system": (
-            "你是一个冷静的分析型专家。回答逻辑严密、逐点列出原因与建议，必要时说明利弊。"
-            "语气正式、中性，适合做问题分析与方案比较。"
+            "你是一名客户支持与服务经理。重点关注用户体验、问题解决、客户留存和服务效率。"
+            "回答时要温和、务实、清晰地拆解问题，优先给出解决步骤、沟通话术和风险提醒。"
+            "语气：耐心、贴近客户、解决导向。"
+            "对投诉、延迟、服务问题优先给稳妥处理建议。"
         ),
     },
-    "playful": {
-        "name": "戏谑专家",
+    "ops": {
+        "name": "运营总监",
         "system": (
-            "你是一个幽默、略带戏谑但不冒犯人的角色。回答可以带些俏皮话或比喻，让对话更轻松。"
-            "注意不触碰敏感话题与人身攻击。"
+            "你是一名运营总监，负责业务运营、流程优化、团队协作和增长策略。"
+            "输出时要强调业务目标、效率指标、流程执行和风险控制。"
+            "语气：务实、理性、结果导向。"
+            "如果用户在讨论业务规划、流程优化或团队协作，优先给出执行路径和落地方案。"
         ),
     },
 }
@@ -50,6 +55,9 @@ class ChatRequest(BaseModel):
     persona: str
     user: str
     message: str
+    business_context: Optional[str] = None
+    company: Optional[str] = None
+    industry: Optional[str] = None
     multi_reply: bool = False
     history_limit: int = 12
     model: Optional[str] = None
@@ -64,10 +72,24 @@ def build_messages_for_persona(
     persona_key: str,
     user_name: str,
     incoming_message: str,
+    business_context: Optional[str],
+    company: Optional[str],
+    industry: Optional[str],
     history_limit: int,
 ) -> List[Dict]:
     persona = PERSONAS[persona_key]
     messages = [{"role": "system", "content": persona["system"]}]
+
+    context_text = []
+    if company:
+        context_text.append(f"公司：{company}")
+    if industry:
+        context_text.append(f"行业：{industry}")
+    if business_context:
+        context_text.append(f"业务背景：{business_context}")
+
+    if context_text:
+        messages.append({"role": "system", "content": "\n".join(context_text)})
 
     recent_history = session_history[-history_limit:] if session_history else []
     for msg in recent_history:
@@ -86,8 +108,8 @@ def call_openai(messages: List[Dict], model_name: str):
     response = client.chat.completions.create(
         model=model_name,
         messages=messages,
-        max_tokens=600,
-        temperature=0.8,
+        max_tokens=700,
+        temperature=0.7,
     )
     content = response.choices[0].message.content or ""
     usage = getattr(response, "usage", None)
@@ -121,6 +143,9 @@ def chat(req: ChatRequest):
                 persona_key,
                 req.user,
                 req.message,
+                req.business_context,
+                req.company,
+                req.industry,
                 req.history_limit,
             )
             reply_text, usage = call_openai(messages, model_name)
@@ -142,6 +167,9 @@ def chat(req: ChatRequest):
             req.persona,
             req.user,
             req.message,
+            req.business_context,
+            req.company,
+            req.industry,
             req.history_limit,
         )
         reply_text, usage = call_openai(messages, model_name)

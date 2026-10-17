@@ -1,19 +1,24 @@
 # three-persona-chatbot
-A demo FastAPI chatbot with three selectable personas (friendly, analyst, and playful).
+Business-oriented multi-persona chatbot for customer conversations and internal business support.
 
 ## Overview
-This project exposes a simple API for generating responses with three different personas:
+This project exposes a lightweight FastAPI API for business-facing chat interactions with three role-based personas:
 
-- friendly
-- analyst
-- playful
+- sales
+- support
+- ops
 
-It also supports a `multi_reply` mode to compare how each persona would answer the same message.
+Each persona has a different business focus:
+- Sales: customer value, deal strategy, stakeholder alignment
+- Support: customer experience, issue handling, retention
+- Ops: execution, process design, efficiency and metrics
+
+It also supports a `multi_reply` mode to compare how each persona would respond to the same business scenario.
 
 ## Tech stack
 - Python
 - FastAPI
-- OpenAI Python SDK
+- OpenAI SDK
 
 ## Setup
 
@@ -55,35 +60,49 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 curl http://127.0.0.1:8000/health
 ```
 
-## Example request: single persona
+## Example request: sales persona
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{
-    "session_id": "demo-1",
-    "persona": "friendly",
+    "session_id": "biz-demo-1",
+    "persona": "sales",
     "user": "Alice",
-    "message": "我想提升沟通表达，能给我一些建议吗？",
+    "company": "Apex Digital",
+    "industry": "SaaS",
+    "business_context": "我们希望提升客户留存并扩展企业客户渠道。",
+    "message": "我们想更好地卖给企业客户，应该怎么做？",
     "multi_reply": false
   }'
 ```
 
-## Example request: all three personas
+## Example request: compare all three personas
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{
-    "session_id": "demo-1",
-    "persona": "friendly",
+    "session_id": "biz-demo-2",
+    "persona": "sales",
     "user": "Bob",
-    "message": "我在准备面试，需要快速提升表达能力。",
+    "company": "NovaWorks",
+    "industry": "制造业",
+    "business_context": "团队在做新产品落地，客户反馈慢，流程不清晰。",
+    "message": "我们现在要做业务优化，应该先处理什么？",
     "multi_reply": true
   }'
 ```
 
+## Business use cases
+
+- Sales pitch and customer discovery
+- Customer support response strategies
+- Internal business process optimization
+- Cross-functional team communication
+- Operational risk and service improvement planning
+
 ## Notes
 - Chat history is stored in memory for demo purposes.
 - For production, replace the in-memory storage with Redis or a database.
-- You can adjust the default OpenAI model through `OPENAI_MODEL`.
+- You can adjust the default model in `.env` using `OPENAI_MODEL`.
